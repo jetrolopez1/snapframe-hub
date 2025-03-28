@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,7 +22,6 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Cargar conteo de clientes
         const { count: clientesCount, error: clientesError } = await supabase
           .from('customers')
           .select('*', { count: 'exact', head: true });
@@ -140,7 +138,6 @@ const AdminDashboard = () => {
         </Card>
       </div>
 
-      {/* Dialog para crear nueva orden */}
       <NuevaOrdenDialog 
         open={showNuevaOrdenDialog} 
         onOpenChange={setShowNuevaOrdenDialog} 

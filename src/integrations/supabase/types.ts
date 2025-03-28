@@ -16,7 +16,7 @@ export type Database = {
           email: string | null
           id: string
           name: string
-          phone: string | null
+          phone: string
           updated_at: string
         }
         Insert: {
@@ -25,7 +25,7 @@ export type Database = {
           email?: string | null
           id?: string
           name: string
-          phone?: string | null
+          phone: string
           updated_at?: string
         }
         Update: {
@@ -34,7 +34,7 @@ export type Database = {
           email?: string | null
           id?: string
           name?: string
-          phone?: string | null
+          phone?: string
           updated_at?: string
         }
         Relationships: []
@@ -47,6 +47,7 @@ export type Database = {
           order_id: string
           photo_file_id: string | null
           quantity: number
+          selected_options: Json | null
           service_id: string
           subtotal: number | null
           unit_price: number
@@ -59,6 +60,7 @@ export type Database = {
           order_id: string
           photo_file_id?: string | null
           quantity: number
+          selected_options?: Json | null
           service_id: string
           subtotal?: number | null
           unit_price: number
@@ -71,6 +73,7 @@ export type Database = {
           order_id?: string
           photo_file_id?: string | null
           quantity?: number
+          selected_options?: Json | null
           service_id?: string
           subtotal?: number | null
           unit_price?: number
@@ -246,6 +249,82 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      service_attributes: {
+        Row: {
+          attribute_key: string
+          created_at: string
+          id: string
+          price_modifier: number
+          service_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          attribute_key: string
+          created_at?: string
+          id?: string
+          price_modifier: number
+          service_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attribute_key?: string
+          created_at?: string
+          id?: string
+          price_modifier?: number
+          service_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_attributes_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "photo_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_options: {
+        Row: {
+          choices: Json | null
+          created_at: string
+          id: string
+          option_name: string
+          option_type: string
+          required: boolean | null
+          service_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          choices?: Json | null
+          created_at?: string
+          id?: string
+          option_name: string
+          option_type: string
+          required?: boolean | null
+          service_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          choices?: Json | null
+          created_at?: string
+          id?: string
+          option_name?: string
+          option_type?: string
+          required?: boolean | null
+          service_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_options_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "photo_services"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
