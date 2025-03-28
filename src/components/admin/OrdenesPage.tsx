@@ -38,20 +38,32 @@ type Order = {
   status: string;
   delivery_format: string;
   files_path: string | null;
+  priority: 'normal' | 'urgente';
   customer: {
     name: string;
     phone: string;
   } | null;
+  order_items?: {
+    service_id: string;
+    quantity: number;
+    unit_price: number;
+    selected_options: Record<string, any>;
+    service: {
+      description: string;
+    };
+  }[];
 };
 
 const OrdenesPage = () => {
   const [showNuevaOrdenDialog, setShowNuevaOrdenDialog] = useState(false);
   const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [ordenes, setOrdenes] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
   const [editedOrders, setEditedOrders] = useState<{ [key: string]: Partial<Order> }>({});
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -71,16 +83,34 @@ const OrdenesPage = () => {
           status,
           delivery_format,
           files_path,
+          priority,
           customer:customer_id (
             name,
             phone
+          ),
+          order_items (
+            service_id,
+            quantity,
+            unit_price,
+            selected_options,
+            service:service_id (
+              description
+            )
           )
         `)
+        .order('priority', { ascending: false })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      setOrdenes(data || []);
+      // Ordenar las órdenes urgentes primero y luego por fecha
+      const sortedData = (data || []).sort((a, b) => {
+        if (a.priority === 'urgente' && b.priority !== 'urgente') return -1;
+        if (a.priority !== 'urgente' && b.priority === 'urgente') return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
+      setOrdenes(sortedData);
     } catch (error) {
       console.error('Error al cargar órdenes:', error);
       toast({
@@ -213,9 +243,25 @@ Fecha: ${formatDate(orden.created_at)}
 Cliente: ${orden.customer?.name || 'Cliente eliminado'}
 Teléfono: ${orden.customer?.phone || '-'}
 
+SERVICIOS:
+${orden.order_items?.map(item => `
+${item.service.description}
+Cantidad: ${item.quantity}
+${Object.entries(item.selected_options || {})
+  .map(([key, value]) => {
+    if (typeof value === 'boolean' && value) return `+ ${key}`;
+    if (typeof value === 'string') return `+ ${key}: ${value}`;
+    return '';
+  })
+  .filter(Boolean)
+  .join('\n')}
+Precio unitario: ${formatPrice(item.unit_price)}
+`).join('\n') || ''}
+
 Total: ${formatPrice(orden.total_price)}
 Estado: ${getStatusLabel(orden.status)}
 Formato de entrega: ${orden.delivery_format}
+${orden.priority === 'urgente' ? '¡URGENTE!' : ''}
 
 ¡Gracias por su preferencia!
     `;
@@ -227,6 +273,24 @@ Formato de entrega: ${orden.delivery_format}
     setSelectedOrder(orden);
     setShowPrintDialog(true);
   };
+
+  // Función para mostrar detalles
+  const handleShowDetails = (orden: Order) => {
+    setSelectedOrder(orden);
+    setShowDetailsDialog(true);
+  };
+
+  // Filtrar órdenes
+  const filteredOrdenes = ordenes.filter(orden => {
+    if (!searchTerm) return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      orden.folio.toLowerCase().includes(searchLower) ||
+      orden.customer?.name.toLowerCase().includes(searchLower) ||
+      orden.customer?.phone.includes(searchTerm)
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -257,6 +321,8 @@ Formato de entrega: ${orden.delivery_format}
             type="text"
             placeholder="Buscar por folio o nombre..."
             className="pl-10 pr-4 py-2 w-full border rounded-md focus:ring-2 focus:ring-studio-brown focus:border-transparent"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <Button variant="outline" className="flex items-center gap-2">
@@ -268,7 +334,7 @@ Formato de entrega: ${orden.delivery_format}
         <div className="bg-white rounded-md shadow p-6 text-center">
           <div className="animate-pulse text-gray-500">Cargando órdenes...</div>
         </div>
-      ) : ordenes.length === 0 ? (
+      ) : filteredOrdenes.length === 0 ? (
         <div className="bg-white rounded-md shadow p-6 text-center">
           <p className="text-center text-gray-500">
             No hay órdenes registradas.
@@ -290,9 +356,14 @@ Formato de entrega: ${orden.delivery_format}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {ordenes.map((orden) => (
+                {filteredOrdenes.map((orden) => (
                   <tr key={orden.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{orden.folio}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{orden.folio}</div>
+                      {orden.priority === 'urgente' && (
+                        <div className="text-xs font-medium text-red-600">URGENTE</div>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{orden.customer?.name || 'Cliente eliminado'}</div>
                       <div className="text-xs text-gray-500">{orden.customer?.phone || '-'}</div>
@@ -347,7 +418,9 @@ Formato de entrega: ${orden.delivery_format}
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Ver detalles</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleShowDetails(orden)}>
+                            Ver detalles
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handlePrint(orden)}>
                             Imprimir
                           </DropdownMenuItem>
@@ -367,6 +440,82 @@ Formato de entrega: ${orden.delivery_format}
         open={showNuevaOrdenDialog} 
         onOpenChange={setShowNuevaOrdenDialog} 
       />
+
+      {/* Dialog para ver detalles */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle className="flex justify-between items-center">
+              <span>Detalles de la Orden</span>
+              <DialogClose className="rounded-full hover:bg-gray-100 p-2" />
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedOrder && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium text-gray-500">Folio</h4>
+                  <p>{selectedOrder.folio}</p>
+                  {selectedOrder.priority === 'urgente' && (
+                    <span className="text-xs font-medium text-red-600">URGENTE</span>
+                  )}
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-500">Fecha</h4>
+                  <p>{formatDate(selectedOrder.created_at)}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-500">Cliente</h4>
+                  <p>{selectedOrder.customer?.name || 'Cliente eliminado'}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-500">Teléfono</h4>
+                  <p>{selectedOrder.customer?.phone || '-'}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-500">Estado</h4>
+                  <p className={`inline-block px-2 py-1 rounded-full text-sm ${getStatusColor(selectedOrder.status)}`}>
+                    {getStatusLabel(selectedOrder.status)}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-500">Formato de entrega</h4>
+                  <p>{selectedOrder.delivery_format}</p>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-medium text-gray-500 mb-2">Servicios</h4>
+                <div className="space-y-2">
+                  {selectedOrder.order_items?.map((item, index) => (
+                    <div key={index} className="border rounded p-3">
+                      <div className="flex justify-between">
+                        <h5 className="font-medium">{item.service.description}</h5>
+                        <span>{formatPrice(item.unit_price)}</span>
+                      </div>
+                      <p className="text-sm text-gray-500">Cantidad: {item.quantity}</p>
+                      {Object.entries(item.selected_options || {}).map(([key, value]) => (
+                        <p key={key} className="text-sm text-gray-500">
+                          {typeof value === 'boolean' && value ? `+ ${key}` : ''}
+                          {typeof value === 'string' ? `+ ${key}: ${value}` : ''}
+                        </p>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Total</span>
+                  <span className="font-medium text-lg">{formatPrice(selectedOrder.total_price)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog para imprimir orden */}
       <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
