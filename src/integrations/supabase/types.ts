@@ -9,7 +9,244 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      customers: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      order_items: {
+        Row: {
+          comments: string | null
+          created_at: string
+          id: string
+          order_id: string
+          photo_file_id: string | null
+          quantity: number
+          service_id: string
+          subtotal: number | null
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          comments?: string | null
+          created_at?: string
+          id?: string
+          order_id: string
+          photo_file_id?: string | null
+          quantity: number
+          service_id: string
+          subtotal?: number | null
+          unit_price: number
+          updated_at?: string
+        }
+        Update: {
+          comments?: string | null
+          created_at?: string
+          id?: string
+          order_id?: string
+          photo_file_id?: string | null
+          quantity?: number
+          service_id?: string
+          subtotal?: number | null
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "photo_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          advance_payment: number | null
+          comments: string | null
+          created_at: string
+          customer_id: string
+          delivery_format: Database["public"]["Enums"]["delivery_format"]
+          folio: string
+          id: string
+          remaining_payment: number | null
+          status: Database["public"]["Enums"]["order_status"]
+          total_price: number
+          updated_at: string
+        }
+        Insert: {
+          advance_payment?: number | null
+          comments?: string | null
+          created_at?: string
+          customer_id: string
+          delivery_format: Database["public"]["Enums"]["delivery_format"]
+          folio: string
+          id?: string
+          remaining_payment?: number | null
+          status?: Database["public"]["Enums"]["order_status"]
+          total_price: number
+          updated_at?: string
+        }
+        Update: {
+          advance_payment?: number | null
+          comments?: string | null
+          created_at?: string
+          customer_id?: string
+          delivery_format?: Database["public"]["Enums"]["delivery_format"]
+          folio?: string
+          id?: string
+          remaining_payment?: number | null
+          status?: Database["public"]["Enums"]["order_status"]
+          total_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photo_files: {
+        Row: {
+          created_at: string
+          file_path: string
+          file_size: number | null
+          filename: string
+          id: string
+          metadata: Json | null
+          order_id: string
+          original_filename: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          file_path: string
+          file_size?: number | null
+          filename: string
+          id?: string
+          metadata?: Json | null
+          order_id: string
+          original_filename?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string
+          file_size?: number | null
+          filename?: string
+          id?: string
+          metadata?: Json | null
+          order_id?: string
+          original_filename?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_files_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photo_services: {
+        Row: {
+          active: boolean
+          base_price: number
+          created_at: string
+          description: string
+          id: string
+          type: Database["public"]["Enums"]["photo_type"]
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          base_price: number
+          created_at?: string
+          description: string
+          id?: string
+          type: Database["public"]["Enums"]["photo_type"]
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          base_price?: number
+          created_at?: string
+          description?: string
+          id?: string
+          type?: Database["public"]["Enums"]["photo_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          role?: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +255,24 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      delivery_format: "impresa" | "digital" | "ambos"
+      order_status:
+        | "pendiente"
+        | "en_proceso"
+        | "completado"
+        | "entregado"
+        | "cancelado"
+      photo_type:
+        | "infantil"
+        | "ovalada"
+        | "credencial"
+        | "pasaporte"
+        | "familiar"
+        | "individual"
+        | "grupal"
+        | "evento"
+        | "restauracion"
+        | "otro"
     }
     CompositeTypes: {
       [_ in never]: never

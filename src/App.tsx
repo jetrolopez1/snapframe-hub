@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Portfolio from "./pages/Portfolio";
 import Servicios from "./pages/Servicios";
 import Contacto from "./pages/Contacto";
+import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
 
@@ -23,7 +24,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/cliente" element={<ClientPortal />} />
-          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/admin/*" element={<AdminPanel />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/servicios" element={<Servicios />} />
           <Route path="/contacto" element={<Contacto />} />
