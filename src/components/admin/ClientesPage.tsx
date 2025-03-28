@@ -34,6 +34,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 
+// Esquema de validación con Zod
 const clienteSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
   email: z.string().email("Ingresa un email válido").or(z.string().length(0)),
@@ -41,6 +42,7 @@ const clienteSchema = z.object({
   address: z.string().optional(),
 });
 
+// Tipo derivado del esquema
 type ClienteFormValues = z.infer<typeof clienteSchema>;
 
 const ClientesPage = () => {
@@ -114,11 +116,17 @@ const ClientesPage = () => {
 
   const handleSubmit = async (values: ClienteFormValues) => {
     try {
+      // Aseguramos que name siempre tenga un valor (no puede ser undefined)
+      const dataToSubmit = {
+        ...values,
+        name: values.name.trim() // Garantizamos que name esté presente y sin espacios adicionales
+      };
+      
       if (currentCliente) {
         // Actualizar cliente existente
         const { error } = await supabase
           .from('customers')
-          .update(values)
+          .update(dataToSubmit)
           .eq('id', currentCliente.id);
           
         if (error) throw error;
@@ -131,7 +139,7 @@ const ClientesPage = () => {
         // Crear nuevo cliente
         const { error } = await supabase
           .from('customers')
-          .insert(values);
+          .insert(dataToSubmit);
           
         if (error) throw error;
         
