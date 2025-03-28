@@ -8,19 +8,25 @@ import Index from "./pages/Index";
 import ClientPortal from "./pages/ClientPortal";
 import AdminPanel from "./pages/AdminPanel";
 import NotFound from "./pages/NotFound";
+import Portfolio from "./pages/Portfolio";
+import Servicios from "./pages/Servicios";
+import Contacto from "./pages/Contacto";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
       <BrowserRouter>
+        <Toaster />
+        <Sonner />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/cliente" element={<ClientPortal />} />
           <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/portfolio" element={<Portfolio />} />
+          <Route path="/servicios" element={<Servicios />} />
+          <Route path="/contacto" element={<Contacto />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
