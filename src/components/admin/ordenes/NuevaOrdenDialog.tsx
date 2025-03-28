@@ -17,7 +17,8 @@ import {
   ArrowRight, 
   ArrowLeft, 
   Image,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -72,6 +73,15 @@ interface ServiceOption {
   required: boolean;
 }
 
+// Tipo para un servicio seleccionado con sus opciones
+interface SelectedServiceItem {
+  service: PhotoService;
+  opciones: ServiceOption[];
+  opcionesValues: OpcionesServicioValues;
+  quantity: number;
+  subtotal: number;
+}
+
 // Tipo para un servicio
 type PhotoService = {
   id: string;
@@ -98,6 +108,8 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
   const [precioBase, setPrecioBase] = useState(0);
   const [precioTotal, setPrecioTotal] = useState(0);
   const [precioAdicionales, setPrecioAdicionales] = useState(0);
+  const [serviciosSeleccionados, setServiciosSeleccionados] = useState<SelectedServiceItem[]>([]);
+  const [creandoOrden, setCreandoOrden] = useState(false);
   const { toast } = useToast();
 
   // Códigos de país para el selector
@@ -197,6 +209,7 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
       setPrecioBase(0);
       setPrecioTotal(0);
       setPrecioAdicionales(0);
+      setServiciosSeleccionados([]);
       searchForm.reset();
       nuevoClienteForm.reset();
       servicioForm.reset();
@@ -211,6 +224,19 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
       calcularPrecio();
     }
   }, [opcionesServicioForm.watch(), ordenForm.watch('quantity')]);
+
+  // Calcular precio total de todos los servicios seleccionados
+  useEffect(() => {
+    if (serviciosSeleccionados.length > 0) {
+      const total = serviciosSeleccionados.reduce((sum, item) => sum + item.subtotal, 0);
+      setPrecioTotal(total);
+      ordenForm.setValue('total_price', total);
+      
+      // Calcular anticipo predeterminado (30%)
+      const anticipoPredeterminado = Math.ceil(total * 0.3);
+      ordenForm.setValue('advance_payment', anticipoPredeterminado);
+    }
+  }, [serviciosSeleccionados]);
 
   // Buscar cliente por teléfono
   const handleBuscarCliente = async (values: ClienteSearchValues) => {
@@ -390,14 +416,90 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
     }
   };
 
-  // Continuar a detalles de orden
-  const handleOpcionesServicio = () => {
+  // Agregar servicio actual a la lista de servicios seleccionados
+  const handleAgregarServicio = () => {
+    if (!servicioSeleccionado) return;
+    
+    // Obtener valores actuales
+    const opcionesValues = opcionesServicioForm.getValues();
+    const cantidad = ordenForm.getValues('quantity') || 1;
+    
+    // Calcular subtotal
+    let precioAdicionalesTemp = 0;
+    
+    opcionesServicio.forEach(opcion => {
+      const valorSeleccionado = opcionesValues[opcion.option_name];
+      
+      if (opcion.option_type === 'dropdown' && typeof valorSeleccionado === 'string') {
+        precioAdicionalesTemp += opcion.choices[valorSeleccionado] || 0;
+      } else if (opcion.option_type === 'checkbox' && valorSeleccionado === true) {
+        precioAdicionalesTemp += opcion.choices['true'] || 0;
+      }
+    });
+    
+    const subtotal = (servicioSeleccionado.base_price + precioAdicionalesTemp) * cantidad;
+    
+    // Agregar a la lista de servicios seleccionados
+    const nuevoServicio: SelectedServiceItem = {
+      service: servicioSeleccionado,
+      opciones: [...opcionesServicio],
+      opcionesValues: {...opcionesValues},
+      quantity: cantidad,
+      subtotal: subtotal
+    };
+    
+    setServiciosSeleccionados([...serviciosSeleccionados, nuevoServicio]);
+    
+    // Resetear formularios para seleccionar otro servicio
+    servicioForm.reset();
+    opcionesServicioForm.reset();
+    ordenForm.setValue('quantity', 1);
+    setServicioSeleccionado(null);
+    setOpcionesServicio([]);
+    
+    // Volver a la selección de servicio
+    setStep('seleccionar_servicio');
+    
+    toast({
+      title: "Servicio agregado",
+      description: `Se agregó ${servicioSeleccionado.description} a la orden`
+    });
+  };
+
+  // Eliminar un servicio de la lista
+  const handleEliminarServicio = (index: number) => {
+    const nuevosServicios = [...serviciosSeleccionados];
+    nuevosServicios.splice(index, 1);
+    setServiciosSeleccionados(nuevosServicios);
+  };
+
+  // Continuar a detalles de orden después de seleccionar al menos un servicio
+  const handleContinuarADetalles = () => {
+    if (serviciosSeleccionados.length === 0) {
+      toast({
+        title: "Error",
+        description: "Debes agregar al menos un servicio a la orden",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setStep('detalles_orden');
+  };
+
+  // Continuar a detalles de orden o agregar servicio
+  const handleOpcionesServicio = (agregarMas: boolean = false) => {
+    if (agregarMas) {
+      handleAgregarServicio();
+    } else {
+      handleAgregarServicio();
+      handleContinuarADetalles();
+    }
   };
 
   // Crear nueva orden
   const handleCrearOrden = async (values: OrdenValues) => {
-    if (!clienteEncontrado || !servicioSeleccionado) {
+    if (!clienteEncontrado || serviciosSeleccionados.length === 0) {
       toast({
         title: "Error",
         description: "Información incompleta para crear la orden",
@@ -406,11 +508,9 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
       return;
     }
 
+    setCreandoOrden(true);
     try {
-      // Obtener opciones seleccionadas
-      const opcionesSeleccionadas = opcionesServicioForm.getValues();
-      
-      // Insertar orden - No incluir folio ya que se genera automáticamente por un trigger
+      // Insertar orden
       const { data: orden, error: ordenError } = await supabase
         .from('orders')
         .insert({
@@ -426,21 +526,21 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
 
       if (ordenError) throw ordenError;
 
-      // Insertar item de orden
-      const { data: item, error: itemError } = await supabase
-        .from('order_items')
-        .insert({
-          order_id: orden.id,
-          service_id: servicioSeleccionado.id,
-          quantity: values.quantity,
-          unit_price: precioBase,
-          subtotal: values.total_price,
-          selected_options: opcionesSeleccionadas
-        })
-        .select()
-        .single();
+      // Insertar items de orden para cada servicio seleccionado
+      for (const item of serviciosSeleccionados) {
+        const { error: itemError } = await supabase
+          .from('order_items')
+          .insert({
+            order_id: orden.id,
+            service_id: item.service.id,
+            quantity: item.quantity,
+            unit_price: item.service.base_price,
+            subtotal: item.subtotal,
+            selected_options: item.opcionesValues
+          });
 
-      if (itemError) throw itemError;
+        if (itemError) throw itemError;
+      }
 
       toast({
         title: "Orden creada",
@@ -454,6 +554,8 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
         description: "Ocurrió un error al crear la orden",
         variant: "destructive"
       });
+    } finally {
+      setCreandoOrden(false);
     }
   };
 
@@ -543,6 +645,47 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
       currency: 'MXN',
       minimumFractionDigits: 2 
     }).format(price);
+  };
+
+  // Renderizar servicios seleccionados
+  const renderServiciosSeleccionados = () => {
+    if (serviciosSeleccionados.length === 0) {
+      return (
+        <div className="text-center py-4 text-gray-500">
+          No hay servicios seleccionados
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-3">
+        {serviciosSeleccionados.map((item, index) => (
+          <div key={index} className="flex justify-between items-center p-3 border rounded-md bg-gray-50">
+            <div>
+              <p className="font-medium">{item.service.description} x {item.quantity}</p>
+              <p className="text-sm text-gray-600">
+                {Object.entries(item.opcionesValues).map(([key, value]) => {
+                  if (typeof value === 'boolean' && value) {
+                    return <span key={key} className="inline-block mr-2">{key}</span>;
+                  } else if (typeof value === 'string') {
+                    return <span key={key} className="inline-block mr-2">{key}: {value}</span>;
+                  }
+                  return null;
+                })}
+              </p>
+              <p className="text-sm font-medium">{formatPrice(item.subtotal)}</p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleEliminarServicio(index)}
+            >
+              <Trash2 className="h-4 w-4 text-red-500" />
+            </Button>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -640,6 +783,7 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
 
         {/* Step 2: Nuevo Cliente */}
         {step === 'nuevo_cliente' && (
+          
           <div className="space-y-6">
             <Form {...nuevoClienteForm}>
               <form onSubmit={nuevoClienteForm.handleSubmit(handleNuevoCliente)} className="space-y-4">
@@ -750,6 +894,22 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
               {clienteEncontrado.email && <p className="text-sm text-gray-600">{clienteEncontrado.email}</p>}
             </div>
 
+            {/* Mostrar servicios ya seleccionados */}
+            {serviciosSeleccionados.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="font-medium text-gray-700">Servicios Seleccionados</h3>
+                {renderServiciosSeleccionados()}
+                <div className="pt-2 flex justify-end">
+                  <Button 
+                    onClick={handleContinuarADetalles}
+                    className="ml-auto"
+                  >
+                    Continuar a Detalles <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <Form {...servicioForm}>
               <form onSubmit={servicioForm.handleSubmit(handleSeleccionarServicio)} className="space-y-4">
                 <FormField
@@ -759,245 +919,4 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
                     <FormItem>
                       <FormLabel>Servicio</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar servicio" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {servicios.map((servicio) => (
-                            <SelectItem key={servicio.id} value={servicio.id}>
-                              {servicio.description} - {formatPrice(servicio.base_price)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex justify-between pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => {
-                      if (isClienteNuevo) {
-                        setStep('nuevo_cliente');
-                      } else {
-                        setStep('buscar_cliente');
-                      }
-                    }}
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Atrás
-                  </Button>
-                  <Button type="submit">
-                    Continuar <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </div>
-        )}
-
-        {/* Step 4: Opciones de Servicio */}
-        {step === 'opciones_servicio' && servicioSeleccionado && (
-          <div className="space-y-6">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-medium text-gray-700">Servicio Seleccionado</h3>
-              <p className="text-sm text-gray-600">{servicioSeleccionado.description}</p>
-              <p className="text-sm text-gray-600">Precio base: {formatPrice(servicioSeleccionado.base_price)}</p>
-            </div>
-
-            <Form {...opcionesServicioForm}>
-              <form onSubmit={opcionesServicioForm.handleSubmit(handleOpcionesServicio)} className="space-y-4">
-                {renderOpcionesServicio()}
-
-                <FormField
-                  control={ordenForm.control}
-                  name="quantity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cantidad</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          min="1" 
-                          step="1" 
-                          {...field} 
-                          onChange={(e) => {
-                            const value = parseInt(e.target.value);
-                            if (value > 0) {
-                              field.onChange(value);
-                            }
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="rounded-md bg-gray-50 p-4">
-                  <h4 className="font-medium mb-2">Resumen de Precios</h4>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Precio base:</span>
-                      <span>{formatPrice(precioBase)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Adicionales:</span>
-                      <span>{formatPrice(precioAdicionales)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Cantidad:</span>
-                      <span>{ordenForm.getValues('quantity') || 1}</span>
-                    </div>
-                    <div className="flex justify-between font-medium border-t pt-1 mt-1">
-                      <span>Total:</span>
-                      <span>{calculandoPrecio ? '...' : formatPrice(precioTotal)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-between pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setStep('seleccionar_servicio')}
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Atrás
-                  </Button>
-                  <Button type="submit">
-                    Continuar <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </div>
-        )}
-
-        {/* Step 5: Detalles de la Orden */}
-        {step === 'detalles_orden' && clienteEncontrado && servicioSeleccionado && (
-          <div className="space-y-6">
-            <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-              <div>
-                <h3 className="font-medium text-gray-700">Cliente</h3>
-                <p className="text-sm text-gray-600">{clienteEncontrado.name}</p>
-                <p className="text-sm text-gray-600">{clienteEncontrado.phone}</p>
-              </div>
-              
-              <div>
-                <h3 className="font-medium text-gray-700">Servicio</h3>
-                <p className="text-sm text-gray-600">
-                  {servicioSeleccionado.description} x {ordenForm.getValues('quantity')}
-                </p>
-                <p className="text-sm text-gray-600">
-                  {Object.entries(opcionesServicioForm.getValues()).map(([key, value]) => {
-                    if (typeof value === 'boolean' && value) {
-                      return <span key={key} className="inline-block mr-2">{key}, </span>;
-                    } else if (typeof value === 'string') {
-                      return <span key={key} className="inline-block mr-2">{key}: {value}, </span>;
-                    }
-                    return null;
-                  })}
-                </p>
-                <p className="text-sm font-medium text-gray-700">
-                  Total: {formatPrice(precioTotal)}
-                </p>
-              </div>
-            </div>
-
-            <Form {...ordenForm}>
-              <form onSubmit={ordenForm.handleSubmit(handleCrearOrden)} className="space-y-4">
-                <FormField
-                  control={ordenForm.control}
-                  name="delivery_format"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Formato de Entrega</FormLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar formato de entrega" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="impresa">Impresa</SelectItem>
-                          <SelectItem value="digital">Digital</SelectItem>
-                          <SelectItem value="ambos">Ambos</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={ordenForm.control}
-                  name="advance_payment"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Anticipo</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          min="0" 
-                          step="1" 
-                          placeholder="0.00" 
-                          {...field} 
-                          onChange={(e) => {
-                            const value = parseFloat(e.target.value);
-                            if (!isNaN(value) && value >= 0) {
-                              field.onChange(value);
-                            }
-                          }}
-                        />
-                      </FormControl>
-                      <p className="text-xs text-muted-foreground">
-                        Recomendado: {formatPrice(precioTotal * 0.3)} (30%)
-                      </p>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={ordenForm.control}
-                  name="comments"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Comentarios (opcional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Comentarios adicionales" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <DialogFooter className="pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setStep('opciones_servicio')}
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Atrás
-                  </Button>
-                  <Button type="submit">
-                    <Check className="mr-2 h-4 w-4" /> Crear Orden
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-export default NuevaOrdenDialog;
+                        <FormControl
