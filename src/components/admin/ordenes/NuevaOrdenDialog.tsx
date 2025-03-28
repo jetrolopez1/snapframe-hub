@@ -316,11 +316,17 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
 
       if (error) throw error;
 
-      setOpcionesServicio(opciones || []);
+      // Convert the Supabase JSON data to the expected format
+      const processedOptions = opciones?.map(option => ({
+        ...option,
+        choices: typeof option.choices === 'object' ? option.choices as Record<string, number> : {}
+      })) || [];
+      
+      setOpcionesServicio(processedOptions);
       
       // Inicializar formulario de opciones con valores predeterminados
       const defaultValues: Record<string, string | boolean> = {};
-      opciones?.forEach(opcion => {
+      processedOptions.forEach(opcion => {
         if (opcion.option_type === 'dropdown' && opcion.choices) {
           // Para dropdowns, seleccionar la primera opción
           const firstChoice = Object.keys(opcion.choices)[0];
@@ -405,7 +411,7 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
       // Obtener opciones seleccionadas
       const opcionesSeleccionadas = opcionesServicioForm.getValues();
       
-      // Insertar orden
+      // Insertar orden - No incluir folio ya que se genera automáticamente por un trigger
       const { data: orden, error: ordenError } = await supabase
         .from('orders')
         .insert({
