@@ -3,7 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Users, Receipt, ImageIcon, PieChart } from 'lucide-react';
+import { Loader2, Users, Receipt, ImageIcon, PieChart, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
+import NuevaOrdenDialog from '@/components/admin/ordenes/NuevaOrdenDialog';
 
 const AdminDashboard = () => {
   const { profile } = useAuth();
@@ -14,6 +17,8 @@ const AdminDashboard = () => {
     totalFotos: 0,
     loading: true
   });
+  const [showNuevaOrdenDialog, setShowNuevaOrdenDialog] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -23,18 +28,15 @@ const AdminDashboard = () => {
           .from('customers')
           .select('*', { count: 'exact', head: true });
 
-        // Cargar conteo de órdenes
         const { count: ordenesCount, error: ordenesError } = await supabase
           .from('orders')
           .select('*', { count: 'exact', head: true });
 
-        // Cargar conteo de órdenes pendientes
         const { count: ordenesPendientesCount, error: ordenesPendientesError } = await supabase
           .from('orders')
           .select('*', { count: 'exact', head: true })
           .eq('status', 'pendiente');
 
-        // Cargar conteo de archivos de fotos
         const { count: fotosCount, error: fotosError } = await supabase
           .from('photo_files')
           .select('*', { count: 'exact', head: true });
@@ -69,13 +71,22 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold text-gray-800 mb-2">
-          Bienvenido, {profile?.first_name || 'Usuario'}
-        </h2>
-        <p className="text-gray-500">
-          Aquí puedes ver un resumen de la actividad de FotoLeón.
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-2">
+            Bienvenido, {profile?.first_name || 'Usuario'}
+          </h2>
+          <p className="text-gray-500">
+            Aquí puedes ver un resumen de la actividad de FotoLeón.
+          </p>
+        </div>
+        <Button 
+          onClick={() => setShowNuevaOrdenDialog(true)}
+          className="px-6 py-6 text-base"
+          size="lg"
+        >
+          <Plus className="mr-2 h-5 w-5" /> Nueva Orden
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -128,6 +139,12 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Dialog para crear nueva orden */}
+      <NuevaOrdenDialog 
+        open={showNuevaOrdenDialog} 
+        onOpenChange={setShowNuevaOrdenDialog} 
+      />
     </div>
   );
 };
