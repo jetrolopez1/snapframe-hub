@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,18 +22,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Función para cargar perfil del usuario
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      // Primero intentar obtener el perfil existente
+      const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error) {
-        console.error('Error al cargar perfil:', error);
+      if (fetchError) {
+        // Si el error es porque no existe el perfil, crear uno nuevo
+        if (fetchError.code === 'PGRST116') {
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert([
+              {
+                id: userId,
+                first_name: '',
+                last_name: '',
+                role: 'user',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+            ])
+            .select()
+            .single();
+
+          if (createError) {
+            console.error('Error al crear perfil:', createError);
+            return null;
+          }
+
+          return newProfile;
+        }
+        console.error('Error al obtener perfil:', fetchError);
         return null;
       }
 
-      return data;
+      return existingProfile;
     } catch (error) {
       console.error('Error en fetchProfile:', error);
       return null;

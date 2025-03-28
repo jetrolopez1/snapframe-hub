@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Filter, MoreHorizontal } from 'lucide-react';
+import { Plus, Search, Filter, MoreHorizontal, Printer } from 'lucide-react';
 import NuevaOrdenDialog from './ordenes/NuevaOrdenDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +10,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { ArrowRight } from 'lucide-react';
 
 // Tipos para las órdenes
 type Order = {
@@ -28,6 +37,8 @@ type Order = {
 
 const OrdenesPage = () => {
   const [showNuevaOrdenDialog, setShowNuevaOrdenDialog] = useState(false);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [ordenes, setOrdenes] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -127,6 +138,32 @@ const OrdenesPage = () => {
     }
   };
 
+  // Función para generar el contenido del ticket
+  const generateTicketContent = (orden: Order) => {
+    const content = `
+FOTO LEÓN
+Orden de Servicio
+
+Folio: ${orden.folio}
+Fecha: ${formatDate(orden.created_at)}
+Cliente: ${orden.customer?.name || 'Cliente eliminado'}
+Teléfono: ${orden.customer?.phone || '-'}
+
+Total: ${formatPrice(orden.total_price)}
+Estado: ${getStatusLabel(orden.status)}
+Formato de entrega: ${orden.delivery_format}
+
+¡Gracias por su preferencia!
+    `;
+    return content.trim();
+  };
+
+  // Función para manejar la impresión
+  const handlePrint = (orden: Order) => {
+    setSelectedOrder(orden);
+    setShowPrintDialog(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -202,7 +239,9 @@ const OrdenesPage = () => {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem>Ver detalles</DropdownMenuItem>
                           <DropdownMenuItem>Cambiar estado</DropdownMenuItem>
-                          <DropdownMenuItem>Imprimir</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handlePrint(orden)}>
+                            Imprimir
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
@@ -219,6 +258,103 @@ const OrdenesPage = () => {
         open={showNuevaOrdenDialog} 
         onOpenChange={setShowNuevaOrdenDialog} 
       />
+
+      {/* Dialog para imprimir orden */}
+      <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex justify-between items-center">
+              <span>Imprimir o enviar orden</span>
+              <DialogClose className="rounded-full hover:bg-gray-100 p-2" />
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="my-4">
+            <div className="bg-gray-50 p-4 rounded-lg max-h-[400px] overflow-y-auto">
+              <pre className="whitespace-pre-wrap font-mono text-sm">
+                {selectedOrder ? generateTicketContent(selectedOrder) : ''}
+              </pre>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <div className="flex space-x-2 justify-end w-full">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const printWindow = window.open('', '_blank');
+                  if (printWindow && selectedOrder) {
+                    printWindow.document.write(`
+                      <!DOCTYPE html>
+                      <html>
+                      <head>
+                        <title>Ticket - ${selectedOrder.folio}</title>
+                        <style>
+                          @page {
+                            size: 58mm auto;
+                            margin: 0;
+                          }
+                          body {
+                            font-family: monospace;
+                            width: 58mm;
+                            padding: 3mm;
+                            margin: 0;
+                            font-size: 10px;
+                            line-height: 1.2;
+                          }
+                          .text-center { text-align: center; }
+                          .font-bold { font-weight: bold; }
+                          .mb-1 { margin-bottom: 3mm; }
+                          hr { border: 1px dashed #000; }
+                        </style>
+                      </head>
+                      <body>
+                        <pre>${generateTicketContent(selectedOrder)}</pre>
+                        <script>
+                          window.onload = () => {
+                            window.print();
+                            setTimeout(() => window.close(), 500);
+                          };
+                        </script>
+                      </body>
+                      </html>
+                    `);
+                    printWindow.document.close();
+                  }
+                }}
+                className="flex items-center"
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                Imprimir
+              </Button>
+              <Button
+                onClick={() => {
+                  if (selectedOrder) {
+                    const text = encodeURIComponent(generateTicketContent(selectedOrder));
+                    const phoneMatch = generateTicketContent(selectedOrder).match(/Teléfono: (.*)/);
+                    if (phoneMatch) {
+                      const phoneNumber = phoneMatch[1].replace(/\D/g, '');
+                      const formattedPhone = phoneNumber.startsWith('52') ? phoneNumber : `52${phoneNumber}`;
+                      const whatsappUrl = `https://wa.me/${formattedPhone}?text=${text}`;
+                      window.open(whatsappUrl, '_blank');
+                    } else {
+                      toast({
+                        title: "Error",
+                        description: "No se encontró el número de teléfono en el ticket",
+                        variant: "destructive"
+                      });
+                    }
+                  }
+                }}
+                className="flex items-center"
+              >
+                Enviar por WhatsApp
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
