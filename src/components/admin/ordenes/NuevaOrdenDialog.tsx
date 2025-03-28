@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useForm } from 'react-hook-form';
@@ -64,14 +63,14 @@ type OpcionesServicioValues = z.infer<typeof opcionesServicioSchema>;
 type OrdenValues = z.infer<typeof ordenSchema>;
 
 // Tipo para las opciones de servicio desde la BD
-type ServiceOption = {
+interface ServiceOption {
   id: string;
   service_id: string;
   option_name: string;
   option_type: string;
   choices: Record<string, number>;
   required: boolean;
-};
+}
 
 // Tipo para un servicio
 type PhotoService = {
@@ -766,7 +765,6 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="" disabled>Seleccionar servicio</SelectItem>
                           {servicios.map((servicio) => (
                             <SelectItem key={servicio.id} value={servicio.id}>
                               {servicio.description} - {formatPrice(servicio.base_price)}
