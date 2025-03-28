@@ -12,7 +12,7 @@ const Footer = () => {
           <div className="flex flex-col">
             <div className="flex items-center gap-2 mb-4">
               <Camera className="h-6 w-6" />
-              <span className="text-xl font-playfair">Estudio Fotográfico</span>
+              <span className="text-xl font-playfair">FotoLeon</span>
             </div>
             <p className="text-studio-beige/80 mb-6">
               Haremos de tus fotografías un recuerdo que dure toda la vida.
@@ -49,22 +49,22 @@ const Footer = () => {
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <MapPin className="h-5 w-5 text-studio-red flex-shrink-0 mt-1" />
-                <span className="text-studio-beige/80">Calle del Estudio, 123<br />Madrid, España 28001</span>
+                <span className="text-studio-beige/80">Calle 1a Poniente #16<br />Tapachula, Chiapas, México</span>
               </div>
               <div className="flex items-center gap-3">
                 <Phone className="h-5 w-5 text-studio-red flex-shrink-0" />
-                <span className="text-studio-beige/80">+34 612 345 678</span>
+                <span className="text-studio-beige/80">+52 962 255 5998</span>
               </div>
               <div className="flex items-center gap-3">
                 <Mail className="h-5 w-5 text-studio-red flex-shrink-0" />
-                <span className="text-studio-beige/80">contacto@estudiofotografico.com</span>
+                <span className="text-studio-beige/80">impresion@fotoleon.com.mx</span>
               </div>
             </div>
           </div>
         </div>
 
         <div className="border-t border-studio-beige/20 mt-8 pt-6 text-center text-studio-beige/60 text-sm">
-          <p>&copy; {new Date().getFullYear()} Estudio Fotográfico. Todos los derechos reservados.</p>
+          <p>&copy; {new Date().getFullYear()} FotoLeon. Todos los derechos reservados.</p>
         </div>
       </div>
     </footer>

@@ -17,10 +17,9 @@ const Navbar = () => {
         <div className="flex items-center">
           <Link to="/" className="flex items-center gap-2">
             <Camera className="h-8 w-8 text-studio-brown" />
-            <span className="text-xl font-playfair font-semibold text-studio-brown">Estudio Fotográfico</span>
+            <span className="text-xl font-playfair font-semibold text-studio-brown">FotoLeon</span>
           </Link>
         </div>
-
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-6">
           <Link to="/" className="text-studio-brown hover:text-studio-red transition-colors">Inicio</Link>
