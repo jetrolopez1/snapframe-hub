@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Camera, Instagram, Facebook, Mail, MapPin, Phone } from 'lucide-react';
@@ -12,20 +11,23 @@ const Footer = () => {
           <div className="flex flex-col">
             <div className="flex items-center gap-2 mb-4">
               <Camera className="h-6 w-6" />
-              <span className="text-xl font-playfair">FotoLeon</span>
+              <span className="text-xl font-playfair">Foto Réflex</span>
             </div>
             <p className="text-studio-beige/80 mb-6">
-              Haremos de tus fotografías un recuerdo que dure toda la vida.
+              Fotografía para todo tipo de eventos.
             </p>
             <div className="flex space-x-4">
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-studio-beige hover:text-studio-red transition-colors">
+              <a href="https://www.instagram.com/foto__reflex/" target="_blank" rel="noopener noreferrer" className="text-studio-beige hover:text-studio-red transition-colors">
                 <Instagram className="h-5 w-5" />
               </a>
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-studio-beige hover:text-studio-red transition-colors">
+              <a href="https://www.facebook.com/FotoReflexEstudio/" target="_blank" rel="noopener noreferrer" className="text-studio-beige hover:text-studio-red transition-colors">
                 <Facebook className="h-5 w-5" />
               </a>
-              <a href="mailto:contacto@estudiofotografico.com" className="text-studio-beige hover:text-studio-red transition-colors">
+              <a href="mailto:foto_reflex_digital@hotmail.com" className="text-studio-beige hover:text-studio-red transition-colors">
                 <Mail className="h-5 w-5" />
+              </a>
+              <a href="https://wa.me/529611342752" target="_blank" rel="noopener noreferrer" className="text-studio-beige hover:text-studio-red transition-colors">
+                <Phone className="h-5 w-5" />
               </a>
             </div>
           </div>
@@ -49,22 +51,26 @@ const Footer = () => {
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <MapPin className="h-5 w-5 text-studio-red flex-shrink-0 mt-1" />
-                <span className="text-studio-beige/80">Calle 1a Poniente #16<br />Tapachula, Chiapas, México</span>
+                <span className="text-studio-beige/80">Matriz: 2a sur entre 1a y 2a ote. #210-C,<br />Tuxtla Gutierrez, Chiapas, México</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <MapPin className="h-5 w-5 text-studio-red flex-shrink-0 mt-1" />
+                <span className="text-studio-beige/80">Sucursal San Roque: 3a sur entre 3a y 4a ote. #412,<br />Tuxtla Gutierrez, Chiapas, México</span>
               </div>
               <div className="flex items-center gap-3">
                 <Phone className="h-5 w-5 text-studio-red flex-shrink-0" />
-                <span className="text-studio-beige/80">+52 962 255 5998</span>
+                <span className="text-studio-beige/80">961 238 7687</span>
               </div>
               <div className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-studio-red flex-shrink-0" />
-                <span className="text-studio-beige/80">impresion@fotoleon.com.mx</span>
+                <Phone className="h-5 w-5 text-studio-red flex-shrink-0" />
+                <span className="text-studio-beige/80">961 134 2752</span>
               </div>
             </div>
           </div>
         </div>
 
         <div className="border-t border-studio-beige/20 mt-8 pt-6 text-center text-studio-beige/60 text-sm">
-          <p>&copy; {new Date().getFullYear()} FotoLeon. Todos los derechos reservados.</p>
+          <p>&copy; {new Date().getFullYear()} Foto Réflex. Todos los derechos reservados.</p>
         </div>
       </div>
     </footer>

@@ -1,5 +1,5 @@
-
-import React, { useState } from 'react';
+import React, { useState, useCallback, memo } from 'react';
+import { motion } from 'framer-motion';
 import PolaroidFrame from './PolaroidFrame';
 
 const categories = [
@@ -55,12 +55,38 @@ const galleryItems = [
   },
 ];
 
+// Memoize individual gallery items
+const GalleryItem = memo(({ item }) => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="transform transition-all duration-300 hover:-rotate-2"
+  >
+    <PolaroidFrame
+      src={item.src}
+      alt={item.alt}
+      caption={item.caption}
+      loading="lazy"
+    />
+  </motion.div>
+));
+
+GalleryItem.displayName = 'GalleryItem';
+
 const Gallery = () => {
   const [activeCategory, setActiveCategory] = useState('all');
   
-  const filteredItems = activeCategory === 'all' 
-    ? galleryItems 
-    : galleryItems.filter(item => item.category === activeCategory);
+  const filteredItems = useCallback(
+    () => activeCategory === 'all' 
+      ? galleryItems 
+      : galleryItems.filter(item => item.category === activeCategory),
+    [activeCategory]
+  );
+
+  const handleCategoryChange = useCallback((categoryId) => {
+    setActiveCategory(categoryId);
+  }, []);
 
   return (
     <div className="py-12">
@@ -74,7 +100,7 @@ const Gallery = () => {
                   ? 'bg-studio-brown text-white'
                   : 'bg-gray-100 text-studio-brown hover:bg-gray-200'
               }`}
-              onClick={() => setActiveCategory(category.id)}
+              onClick={() => handleCategoryChange(category.id)}
             >
               {category.name}
             </button>
@@ -82,19 +108,16 @@ const Gallery = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        {filteredItems.map((item) => (
-          <div key={item.id} className="transform transition-all duration-300 hover:-rotate-2">
-            <PolaroidFrame
-              src={item.src}
-              alt={item.alt}
-              caption={item.caption}
-            />
-          </div>
+      <motion.div 
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8"
+        layout
+      >
+        {filteredItems().map((item) => (
+          <GalleryItem key={item.id} item={item} />
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 };
 
-export default Gallery;
+export default memo(Gallery);

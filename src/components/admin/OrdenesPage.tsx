@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Filter, MoreHorizontal, Printer } from 'lucide-react';
+import { Plus, Search, Filter, MoreHorizontal, Printer, Save } from 'lucide-react';
 import NuevaOrdenDialog from './ordenes/NuevaOrdenDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -11,6 +11,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -20,6 +27,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { ArrowRight } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 // Tipos para las órdenes
 type Order = {
@@ -29,6 +37,7 @@ type Order = {
   total_price: number;
   status: string;
   delivery_format: string;
+  files_path: string | null;
   customer: {
     name: string;
     phone: string;
@@ -41,6 +50,8 @@ const OrdenesPage = () => {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [ordenes, setOrdenes] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [editedOrders, setEditedOrders] = useState<{ [key: string]: Partial<Order> }>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -59,6 +70,7 @@ const OrdenesPage = () => {
           total_price,
           status,
           delivery_format,
+          files_path,
           customer:customer_id (
             name,
             phone
@@ -78,6 +90,51 @@ const OrdenesPage = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStatusChange = (orderId: string, newStatus: string) => {
+    setEditedOrders(prev => ({
+      ...prev,
+      [orderId]: { ...prev[orderId], status: newStatus }
+    }));
+    setHasChanges(true);
+  };
+
+  const handleFilesPathChange = (orderId: string, fullPath: string) => {
+    setEditedOrders(prev => ({
+      ...prev,
+      [orderId]: { ...prev[orderId], files_path: fullPath }
+    }));
+    setHasChanges(true);
+  };
+
+  const saveChanges = async () => {
+    try {
+      for (const [orderId, changes] of Object.entries(editedOrders)) {
+        const { error } = await supabase
+          .from('orders')
+          .update(changes)
+          .eq('id', orderId);
+        
+        if (error) throw error;
+      }
+
+      toast({
+        title: "Éxito",
+        description: "Los cambios se guardaron correctamente",
+      });
+
+      setEditedOrders({});
+      setHasChanges(false);
+      fetchOrdenes();
+    } catch (error) {
+      console.error('Error al guardar cambios:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron guardar los cambios",
+        variant: "destructive"
+      });
     }
   };
 
@@ -138,10 +195,17 @@ const OrdenesPage = () => {
     }
   };
 
+  // Función para extraer el nombre de la subcarpeta
+  const getSubfolderName = (path: string | null) => {
+    if (!path) return '';
+    const parts = path.split('\\');
+    return parts.slice(-2).join('\\');
+  };
+
   // Función para generar el contenido del ticket
   const generateTicketContent = (orden: Order) => {
     const content = `
-FOTO LEÓN
+FOTO RÉFLEX
 Orden de Servicio
 
 Folio: ${orden.folio}
@@ -168,12 +232,22 @@ Formato de entrega: ${orden.delivery_format}
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold text-gray-800">Órdenes</h2>
-        <Button 
-          onClick={() => setShowNuevaOrdenDialog(true)}
-          size="default"
-        >
-          <Plus className="mr-2 h-4 w-4" /> Nueva Orden
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={saveChanges}
+            disabled={!hasChanges}
+            className={`${!hasChanges ? 'opacity-50' : ''}`}
+          >
+            <Save className="mr-2 h-4 w-4" /> Guardar cambios
+          </Button>
+          <Button 
+            onClick={() => setShowNuevaOrdenDialog(true)}
+            size="default"
+          >
+            <Plus className="mr-2 h-4 w-4" /> Nueva Orden
+          </Button>
+        </div>
       </div>
       
       <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -211,6 +285,7 @@ Formato de entrega: ${orden.delivery_format}
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Archivos</th>
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
                 </tr>
               </thead>
@@ -225,9 +300,44 @@ Formato de entrega: ${orden.delivery_format}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(orden.created_at)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{formatPrice(orden.total_price)}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(orden.status)}`}>
-                        {getStatusLabel(orden.status)}
-                      </span>
+                      <Select
+                        value={editedOrders[orden.id]?.status || orden.status}
+                        onValueChange={(value) => handleStatusChange(orden.id, value)}
+                      >
+                        <SelectTrigger className={`w-[140px] ${getStatusColor(editedOrders[orden.id]?.status || orden.status)}`}>
+                          <SelectValue>{getStatusLabel(editedOrders[orden.id]?.status || orden.status)}</SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pendiente">Pendiente</SelectItem>
+                          <SelectItem value="en_proceso">En proceso</SelectItem>
+                          <SelectItem value="completado">Completado</SelectItem>
+                          <SelectItem value="entregado">Entregado</SelectItem>
+                          <SelectItem value="cancelado">Cancelado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Input
+                        placeholder="Pega la ruta de tu carpeta"
+                        value={editedOrders[orden.id]?.files_path || orden.files_path || ''}
+                        onChange={(e) => handleFilesPathChange(orden.id, e.target.value)}
+                        className="w-[200px]"
+                      />
+                      {(editedOrders[orden.id]?.files_path || orden.files_path) && (
+                        <a
+                          href={`file:///${editedOrders[orden.id]?.files_path || orden.files_path}`}
+                          className="text-xs text-blue-600 hover:underline block mt-1"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const path = editedOrders[orden.id]?.files_path || orden.files_path;
+                            if (path) {
+                              window.open(`file:///${path}`, '_blank');
+                            }
+                          }}
+                        >
+                          {getSubfolderName(editedOrders[orden.id]?.files_path || orden.files_path)}
+                        </a>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <DropdownMenu>
@@ -238,7 +348,6 @@ Formato de entrega: ${orden.delivery_format}
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem>Ver detalles</DropdownMenuItem>
-                          <DropdownMenuItem>Cambiar estado</DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handlePrint(orden)}>
                             Imprimir
                           </DropdownMenuItem>

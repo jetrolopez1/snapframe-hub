@@ -537,7 +537,7 @@ const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange 
   // Función para generar el contenido del ticket
   const generateTicketContent = (orden: any) => {
     const content = `
-FOTO LEÓN
+FOTO RÉFLEX
 Orden de Servicio
 
 Folio: ${orden.folio}
