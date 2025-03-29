@@ -35,8 +35,8 @@ type Order = {
   folio: string;
   created_at: string;
   total_price: number;
-  status: string;
-  delivery_format: string;
+  status: 'pendiente' | 'en_proceso' | 'completado' | 'entregado' | 'cancelado';
+  delivery_format: 'impresa' | 'digital' | 'ambos';
   files_path: string | null;
   priority: 'normal' | 'urgente';
   customer: {
@@ -62,7 +62,10 @@ const OrdenesPage = () => {
   const [ordenes, setOrdenes] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasChanges, setHasChanges] = useState(false);
-  const [editedOrders, setEditedOrders] = useState<{ [key: string]: Partial<Order> }>({});
+  const [editedOrders, setEditedOrders] = useState<{ [key: string]: { 
+    status?: 'pendiente' | 'en_proceso' | 'completado' | 'entregado' | 'cancelado';
+    files_path?: string | null;
+  } }>({});
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
@@ -82,7 +85,6 @@ const OrdenesPage = () => {
           total_price,
           status,
           delivery_format,
-          files_path,
           priority,
           customer:customer_id (
             name,
@@ -97,9 +99,7 @@ const OrdenesPage = () => {
               description
             )
           )
-        `)
-        .order('priority', { ascending: false })
-        .order('created_at', { ascending: false });
+        `) as { data: Order[] | null; error: any };
 
       if (error) throw error;
 
@@ -126,7 +126,7 @@ const OrdenesPage = () => {
   const handleStatusChange = (orderId: string, newStatus: string) => {
     setEditedOrders(prev => ({
       ...prev,
-      [orderId]: { ...prev[orderId], status: newStatus }
+      [orderId]: { ...prev[orderId], status: newStatus as 'pendiente' | 'en_proceso' | 'completado' | 'entregado' | 'cancelado' }
     }));
     setHasChanges(true);
   };

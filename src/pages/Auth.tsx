@@ -147,7 +147,7 @@ const Auth = () => {
         <div className="flex justify-center mb-2">
           <Camera className="h-12 w-12 text-studio-brown" />
         </div>
-        <h1 className="text-3xl font-playfair font-bold text-studio-brown">FotoLeón</h1>
+        <h1 className="text-3xl font-playfair font-bold text-studio-brown">Foto Réflex</h1>
         <p className="text-studio-brown/80">Sistema de Administración</p>
       </div>
 
@@ -280,7 +280,7 @@ const Auth = () => {
           </CardContent>
           
           <CardFooter className="flex justify-center text-sm text-muted-foreground">
-            FotoLeón &copy; {new Date().getFullYear()}
+            Foto Réflex &copy; {new Date().getFullYear()}
           </CardFooter>
         </Tabs>
       </Card>
