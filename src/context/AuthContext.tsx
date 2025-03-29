@@ -22,47 +22,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Función para cargar perfil del usuario
   const fetchProfile = async (userId: string) => {
     try {
-      // Primero intentar obtener el perfil existente
-      const { data: existingProfile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (fetchError) {
-        // Si el error es porque no existe el perfil, crear uno nuevo
-        if (fetchError.code === 'PGRST116') {
-          const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert([
-              {
-                id: userId,
-                first_name: '',
-                last_name: '',
-                role: 'user',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              }
-            ])
-            .select()
-            .single();
-
-          if (createError) {
-            console.error('Error al crear perfil:', createError);
-            return null;
-          }
-
-          return newProfile;
-        }
-        console.error('Error al obtener perfil:', fetchError);
-        return null;
+      // En lugar de consultar "profiles", vamos a usar getUser y confiar en los metadatos
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('Error al obtener usuario:', userError);
+        // Proporcionar un perfil por defecto
+        return createDefaultProfile(userId);
       }
-
-      return existingProfile;
+      
+      // Usar los metadatos del usuario si están disponibles
+      if (userData.user && userData.user.user_metadata) {
+        return {
+          id: userId,
+          first_name: userData.user.user_metadata.first_name || 'Usuario',
+          last_name: userData.user.user_metadata.last_name || '',
+          role: userData.user.user_metadata.role || 'user',
+          created_at: userData.user.created_at,
+          updated_at: new Date().toISOString()
+        };
+      }
+      
+      // Si no hay metadatos, crear un perfil por defecto
+      return createDefaultProfile(userId);
+      
     } catch (error) {
       console.error('Error en fetchProfile:', error);
-      return null;
+      return createDefaultProfile(userId);
     }
+  };
+
+  // Función auxiliar para crear un perfil por defecto
+  const createDefaultProfile = (userId: string) => {
+    return {
+      id: userId,
+      first_name: 'Usuario',
+      last_name: '',
+      role: 'user',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
   };
 
   const refreshProfile = async () => {

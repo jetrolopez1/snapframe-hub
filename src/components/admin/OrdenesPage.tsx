@@ -84,18 +84,37 @@ const OrdenesPage = () => {
 
   const sortOrders = (orders: Order[]) => {
     return orders.sort((a, b) => {
-      // Si ambas órdenes están completadas o canceladas, ordenar por fecha
-      if ((a.status === 'completado' || a.status === 'cancelado') && 
-          (b.status === 'completado' || b.status === 'cancelado')) {
+      // Si ambas están entregadas o canceladas, ordenar por fecha
+      if ((a.status === 'entregado' || a.status === 'cancelado') && 
+          (b.status === 'entregado' || b.status === 'cancelado')) {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
-      // Si solo a está completada o cancelada, va al final
-      if (a.status === 'completado' || a.status === 'cancelado') return 1;
-      // Si solo b está completada o cancelada, va al final
-      if (b.status === 'completado' || b.status === 'cancelado') return -1;
-      // Para el resto, priorizar urgentes
+      
+      // Si solo a está entregada o cancelada, va al final
+      if (a.status === 'entregado' || a.status === 'cancelado') return 1;
+      
+      // Si solo b está entregada o cancelada, va al final
+      if (b.status === 'entregado' || b.status === 'cancelado') return -1;
+      
+      // Si ambas están completadas, ordenar por fecha
+      if (a.status === 'completado' && b.status === 'completado') {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      
+      // Si solo a está completada, va después de pendientes/en proceso pero antes de entregadas/canceladas
+      if (a.status === 'completado') return 1;
+      
+      // Si solo b está completada, va después de pendientes/en proceso pero antes de entregadas/canceladas
+      if (b.status === 'completado') return -1;
+      
+      // Para el resto (pendientes y en proceso), priorizar urgentes
       if (a.priority === 'urgente' && b.priority !== 'urgente') return -1;
       if (a.priority !== 'urgente' && b.priority === 'urgente') return 1;
+      
+      // Si ambas tienen la misma prioridad, ordenar por estado (pendiente antes que en proceso)
+      if (a.status === 'pendiente' && b.status === 'en_proceso') return -1;
+      if (a.status === 'en_proceso' && b.status === 'pendiente') return 1;
+      
       // Finalmente ordenar por fecha
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
@@ -261,26 +280,46 @@ const OrdenesPage = () => {
 
   // Función para generar el contenido del ticket
   const generateTicketContent = (orden: Order) => {
+    // Función para agregar saltos de línea cuando el texto sea muy largo
+    const formatLine = (text: string, maxLength = 30) => {
+      if (!text || text.length <= maxLength) return text;
+      
+      const words = text.split(' ');
+      let result = '';
+      let currentLine = '';
+      
+      words.forEach(word => {
+        if ((currentLine + word).length > maxLength) {
+          result += currentLine.trim() + '\n';
+          currentLine = word + ' ';
+        } else {
+          currentLine += word + ' ';
+        }
+      });
+      
+      return result + currentLine.trim();
+    };
+
     const content = `
 FOTO RÉFLEX
-Orden de Servicio${orden.group ? ` - Grupo: ${orden.group.name}` : ''}
+Orden de Servicio${orden.group ? ` - Grupo: ${formatLine(orden.group.name)}` : ''}
 
 Folio: ${orden.folio}
 Fecha: ${formatDate(orden.created_at)}
-Cliente: ${orden.customer?.name || 'Cliente eliminado'}
+Cliente: ${formatLine(orden.customer?.name || 'Cliente eliminado')}
 Teléfono: ${orden.customer?.phone || '-'}
 
 ${orden.package ? `PAQUETE:
-${orden.package.name} - ${formatPrice(orden.package.base_price)}
-${orden.selected_options?.map(opt => `+ ${opt}`).join('\n') || ''}` : 
+${formatLine(orden.package.name)} - ${formatPrice(orden.package.base_price)}
+${orden.selected_options?.map(opt => `+ ${formatLine(opt)}`).join('\n') || ''}` : 
 `SERVICIOS:
 ${orden.order_items?.map(item => `
-${item.service.description}
+${formatLine(item.service.description)}
 Cantidad: ${item.quantity}
 ${Object.entries(item.selected_options || {})
   .map(([key, value]) => {
-    if (typeof value === 'boolean' && value) return `+ ${key}`;
-    if (typeof value === 'string') return `+ ${key}: ${value}`;
+    if (typeof value === 'boolean' && value) return `+ ${formatLine(key)}`;
+    if (typeof value === 'string') return `+ ${formatLine(key)}: ${formatLine(value)}`;
     return '';
   })
   .filter(Boolean)
@@ -289,7 +328,6 @@ Precio unitario: ${formatPrice(item.unit_price)}
 `).join('\n') || ''}`}
 
 Total: ${formatPrice(orden.total_price)}
-Estado: ${getStatusLabel(orden.status)}
 Formato de entrega: ${orden.delivery_format}
 ${orden.priority === 'urgente' ? '¡URGENTE!' : ''}
 
@@ -383,7 +421,10 @@ ${orden.priority === 'urgente' ? '¡URGENTE!' : ''}
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredOrdenes.map((orden) => (
-                  <tr key={orden.id}>
+                  <tr 
+                    key={orden.id}
+                    className={orden.status === 'cancelado' || orden.status === 'entregado' ? 'opacity-50' : ''}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{orden.folio}</div>
                       {orden.priority === 'urgente' && (
@@ -467,7 +508,13 @@ ${orden.priority === 'urgente' ? '¡URGENTE!' : ''}
       {/* Dialog para crear nueva orden */}
       <NuevaOrdenDialog 
         open={showNuevaOrdenDialog} 
-        onOpenChange={setShowNuevaOrdenDialog} 
+        onOpenChange={setShowNuevaOrdenDialog}
+        onOrderCreated={() => {
+          // Actualizar los datos después de 5 segundos
+          setTimeout(() => {
+            fetchOrdenes();
+          }, 5000);
+        }}
       />
 
       {/* Dialog para ver detalles */}

@@ -114,9 +114,10 @@ type PhotoService = {
 interface NuevaOrdenDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onOrderCreated?: () => void;
 }
 
-const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange }) => {
+const NuevaOrdenDialog: React.FC<NuevaOrdenDialogProps> = ({ open, onOpenChange, onOrderCreated }) => {
   const [step, setStep] = useState<'buscar_cliente' | 'nuevo_cliente' | 'seleccionar_servicio' | 'opciones_servicio' | 'detalles_orden'>('buscar_cliente');
   const [isClienteNuevo, setIsClienteNuevo] = useState(false);
   const [clienteEncontrado, setClienteEncontrado] = useState<any>(null);
@@ -723,6 +724,9 @@ ${ordenForm.getValues().comments ? `Comentarios: ${ordenForm.getValues().comment
       setCurrentFolio(folio);
       setShowConfirmation(true);
       
+      // Notificar que se creó la orden
+      onOrderCreated?.();
+
       // Cerrar la ventana principal
       onOpenChange(false);
     } catch (error) {

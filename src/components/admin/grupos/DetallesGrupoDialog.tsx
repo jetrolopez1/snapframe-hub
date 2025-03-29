@@ -240,21 +240,40 @@ export default function DetallesGrupoDialog({
   };
 
   const generateTicketContent = (orden: Order & { package?: any }) => {
+    // Función para agregar saltos de línea cuando el texto sea muy largo
+    const formatLine = (text: string, maxLength = 30) => {
+      if (!text || text.length <= maxLength) return text;
+      
+      const words = text.split(' ');
+      let result = '';
+      let currentLine = '';
+      
+      words.forEach(word => {
+        if ((currentLine + word).length > maxLength) {
+          result += currentLine.trim() + '\n';
+          currentLine = word + ' ';
+        } else {
+          currentLine += word + ' ';
+        }
+      });
+      
+      return result + currentLine.trim();
+    };
+
     const content = `
 FOTO RÉFLEX
-Orden de Servicio - Grupo: ${group?.name}
+Orden de Servicio - Grupo: ${formatLine(group?.name || '')}
 
 Folio: ${orden.folio}
 Fecha: ${format(new Date(orden.created_at), 'PPP', { locale: es })}
-Cliente: ${orden.customer?.name || 'Cliente eliminado'}
+Cliente: ${formatLine(orden.customer?.name || 'Cliente eliminado')}
 Teléfono: ${orden.customer?.phone || '-'}
 
 ${orden.package ? `PAQUETE:
-${orden.package.name} - ${formatPrice(orden.package.base_price)}
-${orden.selected_options?.map(opt => `+ ${opt}`).join('\n') || ''}` : ''}
+${formatLine(orden.package.name)} - ${formatPrice(orden.package.base_price)}
+${orden.selected_options?.map(opt => `+ ${formatLine(opt)}`).join('\n') || ''}` : ''}
 
 Total: ${formatPrice(orden.total_price)}
-Estado: ${getStatusLabel(orden.status)}
 Formato de entrega: ${orden.delivery_format}
 
 ¡Gracias por su preferencia!

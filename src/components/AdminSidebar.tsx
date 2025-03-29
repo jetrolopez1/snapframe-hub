@@ -53,6 +53,28 @@ const AdminSidebar = ({ isMobile = false }: AdminSidebarProps) => {
   const location = useLocation();
   const { signOut, profile } = useAuth();
 
+  // Función para obtener el nombre de usuario
+  const getUserName = () => {
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name} ${profile.last_name}`;
+    } else if (profile?.first_name) {
+      return profile.first_name;
+    }
+    return 'Usuario';
+  };
+
+  // Función para obtener el rol del usuario
+  const getUserRole = () => {
+    if (!profile?.role) return 'Usuario';
+    
+    switch (profile.role) {
+      case 'admin': return 'Administrador';
+      case 'operator': return 'Operador';
+      case 'operador': return 'Operador';
+      default: return profile.role;
+    }
+  };
+
   const routes = [
     {
       path: '/admin',
@@ -100,9 +122,9 @@ const AdminSidebar = ({ isMobile = false }: AdminSidebarProps) => {
         <div className="bg-studio-beige/20 rounded-lg p-3 mb-6">
           <p className="text-sm text-gray-600">Conectado como</p>
           <p className="font-medium text-studio-brown">
-            {profile?.first_name} {profile?.last_name}
+            {getUserName()}
           </p>
-          <p className="text-xs text-gray-500 capitalize">{profile?.role || 'Usuario'}</p>
+          <p className="text-xs text-gray-500 capitalize">{getUserRole()}</p>
         </div>
       </div>
 
