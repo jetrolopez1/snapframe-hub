@@ -52,6 +52,15 @@ type Order = {
       description: string;
     };
   }[];
+  group?: {
+    name: string;
+  };
+  package?: {
+    id: string;
+    name: string;
+    base_price: number;
+  };
+  selected_options?: string[];
 };
 
 const OrdenesPage = () => {
@@ -73,6 +82,25 @@ const OrdenesPage = () => {
     fetchOrdenes();
   }, []);
 
+  const sortOrders = (orders: Order[]) => {
+    return orders.sort((a, b) => {
+      // Si ambas órdenes están completadas o canceladas, ordenar por fecha
+      if ((a.status === 'completado' || a.status === 'cancelado') && 
+          (b.status === 'completado' || b.status === 'cancelado')) {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      // Si solo a está completada o cancelada, va al final
+      if (a.status === 'completado' || a.status === 'cancelado') return 1;
+      // Si solo b está completada o cancelada, va al final
+      if (b.status === 'completado' || b.status === 'cancelado') return -1;
+      // Para el resto, priorizar urgentes
+      if (a.priority === 'urgente' && b.priority !== 'urgente') return -1;
+      if (a.priority !== 'urgente' && b.priority === 'urgente') return 1;
+      // Finalmente ordenar por fecha
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  };
+
   const fetchOrdenes = async () => {
     setLoading(true);
     try {
@@ -86,10 +114,16 @@ const OrdenesPage = () => {
           status,
           delivery_format,
           priority,
+          group_id,
           customer:customer_id (
             name,
             phone
           ),
+          group:group_id (
+            name
+          ),
+          package:package_id (*),
+          selected_options,
           order_items (
             service_id,
             quantity,
@@ -103,14 +137,7 @@ const OrdenesPage = () => {
 
       if (error) throw error;
 
-      // Ordenar las órdenes urgentes primero y luego por fecha
-      const sortedData = (data || []).sort((a, b) => {
-        if (a.priority === 'urgente' && b.priority !== 'urgente') return -1;
-        if (a.priority !== 'urgente' && b.priority === 'urgente') return 1;
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-
-      setOrdenes(sortedData);
+      setOrdenes(sortOrders(data || []));
     } catch (error) {
       console.error('Error al cargar órdenes:', error);
       toast({
@@ -236,14 +263,17 @@ const OrdenesPage = () => {
   const generateTicketContent = (orden: Order) => {
     const content = `
 FOTO RÉFLEX
-Orden de Servicio
+Orden de Servicio${orden.group ? ` - Grupo: ${orden.group.name}` : ''}
 
 Folio: ${orden.folio}
 Fecha: ${formatDate(orden.created_at)}
 Cliente: ${orden.customer?.name || 'Cliente eliminado'}
 Teléfono: ${orden.customer?.phone || '-'}
 
-SERVICIOS:
+${orden.package ? `PAQUETE:
+${orden.package.name} - ${formatPrice(orden.package.base_price)}
+${orden.selected_options?.map(opt => `+ ${opt}`).join('\n') || ''}` : 
+`SERVICIOS:
 ${orden.order_items?.map(item => `
 ${item.service.description}
 Cantidad: ${item.quantity}
@@ -256,7 +286,7 @@ ${Object.entries(item.selected_options || {})
   .filter(Boolean)
   .join('\n')}
 Precio unitario: ${formatPrice(item.unit_price)}
-`).join('\n') || ''}
+`).join('\n') || ''}`}
 
 Total: ${formatPrice(orden.total_price)}
 Estado: ${getStatusLabel(orden.status)}
@@ -298,10 +328,9 @@ ${orden.priority === 'urgente' ? '¡URGENTE!' : ''}
         <h2 className="text-2xl font-semibold text-gray-800">Órdenes</h2>
         <div className="flex gap-2">
           <Button 
-            variant="outline"
             onClick={saveChanges}
             disabled={!hasChanges}
-            className={`${!hasChanges ? 'opacity-50' : ''}`}
+            className={hasChanges ? "bg-studio-brown hover:bg-studio-brown/90 text-white" : "opacity-50"}
           >
             <Save className="mr-2 h-4 w-4" /> Guardar cambios
           </Button>
@@ -325,9 +354,6 @@ ${orden.priority === 'urgente' ? '¡URGENTE!' : ''}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="outline" className="flex items-center gap-2">
-          <Filter className="h-4 w-4" /> Filtros
-        </Button>
       </div>
 
       {loading ? (
@@ -366,7 +392,10 @@ ${orden.priority === 'urgente' ? '¡URGENTE!' : ''}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{orden.customer?.name || 'Cliente eliminado'}</div>
-                      <div className="text-xs text-gray-500">{orden.customer?.phone || '-'}</div>
+                      <div className="text-xs text-gray-500">
+                        {orden.customer?.phone || '-'}
+                        {orden.group?.name && ` - ${orden.group.name}`}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(orden.created_at)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{formatPrice(orden.total_price)}</td>
@@ -484,6 +513,21 @@ ${orden.priority === 'urgente' ? '¡URGENTE!' : ''}
                   <p>{selectedOrder.delivery_format}</p>
                 </div>
               </div>
+
+              {selectedOrder.package && (
+                <div>
+                  <h4 className="font-medium text-gray-500 mb-2">Paquete</h4>
+                  <div className="border rounded p-3">
+                    <div className="flex justify-between">
+                      <h5 className="font-medium">{selectedOrder.package.name}</h5>
+                      <span>{formatPrice(selectedOrder.package.base_price)}</span>
+                    </div>
+                    {selectedOrder.selected_options?.map((option, index) => (
+                      <p key={index} className="text-sm text-gray-500">+ {option}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <h4 className="font-medium text-gray-500 mb-2">Servicios</h4>

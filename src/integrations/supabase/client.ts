@@ -2,8 +2,9 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/supabase';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// En Vite, debemos usar import.meta.env en lugar de process.env
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mmgnrldpwnwqkgavsoih.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1tZ25ybGRwd253cWtnYXZzb2loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMxNDA0MDEsImV4cCI6MjA1ODcxNjQwMX0.0YwCy8hctxYIKz9xC4rb7PXNSYzlMQOQnnZcVDEbYeU';
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
@@ -11,6 +10,7 @@ import {
   LogOut,
   Menu,
   Camera,
+  UsersRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,17 +26,18 @@ interface SidebarItemProps {
   icon: React.ReactNode;
   label: string;
   isActive: boolean;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+  disabled?: boolean;
 }
 
-const SidebarItem = ({ to, icon, label, isActive, onClick }: SidebarItemProps) => (
+const SidebarItem = ({ to, icon, label, isActive, onClick, disabled }: SidebarItemProps) => (
   <Link
     to={to}
     className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
       isActive
         ? 'bg-studio-brown text-white'
         : 'text-gray-700 hover:bg-studio-brown/10'
-    }`}
+    } ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
     onClick={onClick}
   >
     <span>{icon}</span>
@@ -59,19 +60,25 @@ const AdminSidebar = ({ isMobile = false }: AdminSidebarProps) => {
       icon: <LayoutDashboard size={20} />,
     },
     {
-      path: '/admin/clientes',
-      label: 'Clientes',
-      icon: <Users size={20} />,
-    },
-    {
       path: '/admin/ordenes',
       label: 'Órdenes',
       icon: <Receipt size={20} />,
     },
     {
+      path: '/admin/clientes',
+      label: 'Clientes',
+      icon: <Users size={20} />,
+    },
+    {
+      path: '/admin/grupos',
+      label: 'Grupos',
+      icon: <UsersRound size={20} />,
+    },
+    {
       path: '/admin/fotografias',
       label: 'Fotografías',
       icon: <ImageIcon size={20} />,
+      disabled: true,
     },
     {
       path: '/admin/ajustes',
@@ -86,7 +93,7 @@ const AdminSidebar = ({ isMobile = false }: AdminSidebarProps) => {
     <div className="flex flex-col h-full">
       <div className="p-4 flex items-center space-x-2">
         <Camera size={24} className="text-studio-brown" />
-        <span className="font-playfair font-bold text-xl text-studio-brown">FotoLeón</span>
+        <span className="font-playfair font-bold text-xl text-studio-brown">Foto Réflex</span>
       </div>
       
       <div className="px-3 py-2">
@@ -101,18 +108,21 @@ const AdminSidebar = ({ isMobile = false }: AdminSidebarProps) => {
 
       <nav className="flex-1 px-3 space-y-1">
         {routes.map((route) => {
-          // Si la ruta es de ajustes y el usuario no es admin, no mostrarla
-          if (route.path === '/admin/ajustes' && !isAdmin) {
+          // Si la ruta es de ajustes y el usuario no es admin, o si es fotografías, no mostrarla
+          if ((route.path === '/admin/ajustes' && !isAdmin) || 
+              route.path === '/admin/fotografias') {
             return null;
           }
           
           return (
             <SidebarItem
               key={route.path}
-              to={route.path}
+              to={route.disabled ? "#" : route.path}
               icon={route.icon}
               label={route.label}
               isActive={location.pathname === route.path}
+              onClick={route.disabled ? (e) => e.preventDefault() : undefined}
+              disabled={route.disabled}
             />
           );
         })}
